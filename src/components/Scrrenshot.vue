@@ -303,7 +303,7 @@ export default {
                             scaleX // 传入缩放比例，使箭头大小按比例调整
                         );
                     } else if (annotation.type === 'text') {
-                        this.drawMultilineText(ctx, annotation.text, annotation.x * scaleX, annotation.y * scaleY, annotation.color || this.annotationColor);
+                        this.drawMultilineText(ctx, annotation.text, annotation.x * scaleX, annotation.y * scaleY, annotation.color || this.annotationColor, scaleX);
                     }
                 });
 
@@ -325,13 +325,13 @@ export default {
             };
         },
         // 绘制多行文本
-        drawMultilineText(ctx, text, x, y, color) {
-            ctx.font = '16px Arial';
+        drawMultilineText(ctx, text, x, y, color, scale = 1) {
+            ctx.font = `${16 * scale}px Arial`; // 字体大小根据比例缩放
             ctx.fillStyle = color;
 
             // 分割文本为多行
             const lines = text.split('\n');
-            const lineHeight = 20; // 行高
+            const lineHeight = 20 * scale; // 行高也按比例缩放
 
             // 逐行绘制文本
             lines.forEach((line, index) => {
