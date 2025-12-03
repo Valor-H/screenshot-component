@@ -136,7 +136,7 @@ export default {
         },
         // 开始绘制
         startDrawing(event) {
-            if (this.annotationType !== 'rect') return;
+            if (this.annotationType !== 'rect' && this.annotationType !== 'arrow') return;
 
             const preview = this.$el.querySelector('.screenshot-preview');
             const rect = preview.getBoundingClientRect();
@@ -147,7 +147,7 @@ export default {
         },
         // 绘制过程
         draw(event) {
-            if (!this.isDrawing || this.annotationType !== 'rect') return;
+            if (!this.isDrawing) return;
 
             const preview = this.$el.querySelector('.screenshot-preview');
             const canvas = this.$refs.annotationCanvas;
@@ -161,20 +161,26 @@ export default {
             // 清除并重绘
             this.redrawAnnotations();
 
-            // 绘制当前矩形
             const ctx = canvas.getContext('2d');
             ctx.strokeStyle = '#ff0000';
             ctx.lineWidth = 2;
-            ctx.strokeRect(
-                this.startX,
-                this.startY,
-                currentX - this.startX,
-                currentY - this.startY
-            );
+
+            if (this.annotationType === 'rect') {
+                // 绘制当前矩形
+                ctx.strokeRect(
+                    this.startX,
+                    this.startY,
+                    currentX - this.startX,
+                    currentY - this.startY
+                );
+            } else if (this.annotationType === 'arrow') {
+                // 绘制当前箭头
+                this.drawArrow(ctx, this.startX, this.startY, currentX, currentY);
+            }
         },
         // 停止绘制
         stopDrawing(event) {
-            if (!this.isDrawing || this.annotationType !== 'rect') return;
+            if (!this.isDrawing) return;
 
             const preview = this.$el.querySelector('.screenshot-preview');
             const rect = preview.getBoundingClientRect();
@@ -182,17 +188,29 @@ export default {
             const endX = event.clientX - rect.left;
             const endY = event.clientY - rect.top;
 
-            // 保存矩形数据
-            if (Math.abs(endX - this.startX) > 5 && Math.abs(endY - this.startY) > 5) {
-                this.annotations.push({
-                    type: 'rect',
-                    startX: this.startX,
-                    startY: this.startY,
-                    width: endX - this.startX,
-                    height: endY - this.startY,
-                    color: '#ff0000',
-                    lineWidth: 2
-                });
+            // 保存标注数据
+            if (Math.abs(endX - this.startX) > 5 || Math.abs(endY - this.startY) > 5) {
+                if (this.annotationType === 'rect') {
+                    this.annotations.push({
+                        type: 'rect',
+                        startX: this.startX,
+                        startY: this.startY,
+                        width: endX - this.startX,
+                        height: endY - this.startY,
+                        color: '#ff0000',
+                        lineWidth: 2
+                    });
+                } else if (this.annotationType === 'arrow') {
+                    this.annotations.push({
+                        type: 'arrow',
+                        startX: this.startX,
+                        startY: this.startY,
+                        endX: endX,
+                        endY: endY,
+                        color: '#ff0000',
+                        lineWidth: 2
+                    });
+                }
 
                 // 重绘所有标注
                 this.redrawAnnotations();
@@ -210,15 +228,18 @@ export default {
 
             // 重绘所有已保存的标注
             this.annotations.forEach(annotation => {
+                ctx.strokeStyle = annotation.color;
+                ctx.lineWidth = annotation.lineWidth;
+
                 if (annotation.type === 'rect') {
-                    ctx.strokeStyle = annotation.color;
-                    ctx.lineWidth = annotation.lineWidth;
                     ctx.strokeRect(
                         annotation.startX,
                         annotation.startY,
                         annotation.width,
                         annotation.height
                     );
+                } else if (annotation.type === 'arrow') {
+                    this.drawArrow(ctx, annotation.startX, annotation.startY, annotation.endX, annotation.endY);
                 }
             });
         },
@@ -247,14 +268,22 @@ export default {
 
                 // 绘制所有标注（需要按比例调整）
                 this.annotations.forEach(annotation => {
+                    ctx.strokeStyle = annotation.color;
+                    ctx.lineWidth = annotation.lineWidth * scaleX; // 线宽也需要按比例调整
+
                     if (annotation.type === 'rect') {
-                        ctx.strokeStyle = annotation.color;
-                        ctx.lineWidth = annotation.lineWidth * scaleX; // 线宽也需要按比例调整
                         ctx.strokeRect(
                             annotation.startX * scaleX,
                             annotation.startY * scaleY,
                             annotation.width * scaleX,
                             annotation.height * scaleY
+                        );
+                    } else if (annotation.type === 'arrow') {
+                        this.drawArrow(ctx,
+                            annotation.startX * scaleX,
+                            annotation.startY * scaleY,
+                            annotation.endX * scaleX,
+                            annotation.endY * scaleY
                         );
                     }
                 });
@@ -275,6 +304,25 @@ export default {
                     console.log('已添加带标注的截图到上传列表');
                 }, 'image/png');
             };
+        },
+        // 绘制箭头
+        drawArrow(ctx, fromX, fromY, toX, toY) {
+            const headLength = 10; // 箭头长度
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+
+            // 绘制线条
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            // 绘制箭头
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
         }
     }
 }
