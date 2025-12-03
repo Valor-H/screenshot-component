@@ -22,6 +22,7 @@
             :disabled="!isShowSreenshot">添加标注图到上传列表</el-button>
 
         <el-button @click="undoLastAnnotation" :disabled="annotations.length === 0">撤销</el-button>
+        <el-button @click="redoLastAnnotation" :disabled="redoHistory.length === 0">重做</el-button>
         <el-button @click="onScreenshot" type="success">截图</el-button>
 
         <el-upload class="upload-wrapper" ref="uploadRef" v-model:file-list="uploadFiles" list-type="picture-card"
@@ -68,6 +69,7 @@ export default {
             startY: 0,
             annotations: [],
             annotationHistory: [],
+            redoHistory: [],
             // 文字标注相关
             showTextInput: false,
             tempText: '',
@@ -121,6 +123,7 @@ export default {
                     // 重置标注状态
                     this.annotations = [];
                     this.annotationHistory = []; // 清空历史记录
+                    this.redoHistory = []; // 清空重做历史记录
 
                     // 图片加载完成后初始化canvas
                     this.originImage.onload = () => {
@@ -467,12 +470,27 @@ export default {
         saveToHistory() {
             // 深拷贝当前标注数组到历史记录
             this.annotationHistory.push(JSON.parse(JSON.stringify(this.annotations)));
+            // 清空重做历史记录
+            this.redoHistory = [];
         },
         // 撤销最后一个标注
         undoLastAnnotation() {
             if (this.annotationHistory.length > 0) {
+                // 保存当前状态到重做历史记录
+                this.redoHistory.push(JSON.parse(JSON.stringify(this.annotations)));
                 // 从历史记录中恢复上一个状态
                 this.annotations = this.annotationHistory.pop();
+                // 重绘所有标注
+                this.redrawAnnotations();
+            }
+        },
+        // 重做最后一个撤销的标注
+        redoLastAnnotation() {
+            if (this.redoHistory.length > 0) {
+                // 保存当前状态到历史记录
+                this.annotationHistory.push(JSON.parse(JSON.stringify(this.annotations)));
+                // 从重做历史记录中恢复上一个状态
+                this.annotations = this.redoHistory.pop();
                 // 重绘所有标注
                 this.redrawAnnotations();
             }
