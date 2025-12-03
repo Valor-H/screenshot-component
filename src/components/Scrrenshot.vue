@@ -3,6 +3,7 @@
         <el-radio-group v-model="annotationType" fill="#0d47a1">
             <el-radio-button label="rect" value="rect">矩形</el-radio-button>
             <el-radio-button label="arrow" value="arrow">箭头</el-radio-button>
+            <el-radio-button label="text" value="text">文字</el-radio-button>
         </el-radio-group>
 
         <el-button style="margin:24px 0;" @click="addAnnotatedScreenshot"
@@ -18,9 +19,14 @@
                 <img class="preview-img" :src="previewImg" alt="预览图片" />
             </el-dialog>
         </el-upload>
-        <div class="screenshot-preview" @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing">
+        <div class="screenshot-preview" @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing"
+            @click="handlePreviewClick">
             <img v-if="isShowSreenshot && screenshotUrl" :src="screenshotUrl" alt="截图" />
             <canvas v-if="isShowSreenshot && screenshotUrl" class="annotation-canvas" ref="annotationCanvas"></canvas>
+            <!-- 文字输入框 -->
+            <input v-if="showTextInput" ref="textInput" v-model="tempText" class="text-input"
+                :style="{ left: textInputX + 'px', top: textInputY + 'px' }" @keyup.enter="addTextAnnotation"
+                @blur="cancelTextInput" placeholder="输入文字，按回车确认">
         </div>
 
 
@@ -44,7 +50,12 @@ export default {
             isDrawing: false,
             startX: 0,
             startY: 0,
-            annotations: []
+            annotations: [],
+            // 文字标注相关
+            showTextInput: false,
+            tempText: '',
+            textInputX: 0,
+            textInputY: 0
         }
     },
     mounted() {
@@ -136,7 +147,7 @@ export default {
         },
         // 开始绘制
         startDrawing(event) {
-            if (this.annotationType !== 'rect' && this.annotationType !== 'arrow') return;
+            if (this.annotationType === 'text') return; // 文字标注不需要拖动绘制
 
             const preview = this.$el.querySelector('.screenshot-preview');
             const rect = preview.getBoundingClientRect();
@@ -240,6 +251,10 @@ export default {
                     );
                 } else if (annotation.type === 'arrow') {
                     this.drawArrow(ctx, annotation.startX, annotation.startY, annotation.endX, annotation.endY);
+                } else if (annotation.type === 'text') {
+                    ctx.font = '16px Arial';
+                    ctx.fillStyle = annotation.color || '#ff0000';
+                    ctx.fillText(annotation.text, annotation.x, annotation.y);
                 }
             });
         },
@@ -285,6 +300,10 @@ export default {
                             annotation.endX * scaleX,
                             annotation.endY * scaleY
                         );
+                    } else if (annotation.type === 'text') {
+                        ctx.font = `${16 * scaleX}px Arial`;
+                        ctx.fillStyle = annotation.color || '#ff0000';
+                        ctx.fillText(annotation.text, annotation.x * scaleX, annotation.y * scaleY);
                     }
                 });
 
@@ -323,6 +342,58 @@ export default {
             ctx.moveTo(toX, toY);
             ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
             ctx.stroke();
+        },
+        // 处理图片区域点击
+        handlePreviewClick(event) {
+            // 如果不是文字标注模式或者正在绘制，不处理
+            if (this.annotationType !== 'text' || this.isDrawing) return;
+
+            const preview = this.$el.querySelector('.screenshot-preview');
+            const rect = preview.getBoundingClientRect();
+
+            // 计算点击位置相对于预览区域的坐标
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // 显示文字输入框
+            this.textInputX = x;
+            this.textInputY = y;
+            this.showTextInput = true;
+            this.tempText = '';
+
+            // 在下一个DOM更新周期中聚焦输入框
+            this.$nextTick(() => {
+                if (this.$refs.textInput) {
+                    this.$refs.textInput.focus();
+                }
+            });
+        },
+        // 添加文字标注
+        addTextAnnotation() {
+            if (!this.tempText.trim()) {
+                this.cancelTextInput();
+                return;
+            }
+
+            // 保存文字标注
+            this.annotations.push({
+                type: 'text',
+                text: this.tempText,
+                x: this.textInputX,
+                y: this.textInputY,
+                color: '#ff0000'
+            });
+
+            // 重绘所有标注
+            this.redrawAnnotations();
+
+            // 重置输入状态
+            this.cancelTextInput();
+        },
+        // 取消文字输入
+        cancelTextInput() {
+            this.showTextInput = false;
+            this.tempText = '';
         }
     }
 }
@@ -354,6 +425,19 @@ export default {
     left: 0;
     cursor: crosshair;
     z-index: 1;
+}
+
+/* 文字输入框样式 */
+.text-input {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid #ff0000;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 14px;
+    outline: none;
+    z-index: 10;
+    min-width: 120px;
 }
 
 /* 自定义上传组件图片预览框大小 */
