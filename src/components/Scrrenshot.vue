@@ -299,7 +299,8 @@ export default {
                             annotation.startX * scaleX,
                             annotation.startY * scaleY,
                             annotation.endX * scaleX,
-                            annotation.endY * scaleY
+                            annotation.endY * scaleY,
+                            scaleX // 传入缩放比例，使箭头大小按比例调整
                         );
                     } else if (annotation.type === 'text') {
                         this.drawMultilineText(ctx, annotation.text, annotation.x * scaleX, annotation.y * scaleY, annotation.color || this.annotationColor);
@@ -338,8 +339,8 @@ export default {
             });
         },
         // 绘制箭头
-        drawArrow(ctx, fromX, fromY, toX, toY) {
-            const headLength = 10; // 箭头长度
+        drawArrow(ctx, fromX, fromY, toX, toY, scale = 1) {
+            const headLength = 10 * scale; // 箭头长度，根据比例缩放
             const angle = Math.atan2(toY - fromY, toX - fromX);
 
             // 绘制线条
