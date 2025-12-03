@@ -24,9 +24,9 @@
             <img v-if="isShowSreenshot && screenshotUrl" :src="screenshotUrl" alt="截图" />
             <canvas v-if="isShowSreenshot && screenshotUrl" class="annotation-canvas" ref="annotationCanvas"></canvas>
             <!-- 文字输入框 -->
-            <input v-if="showTextInput" ref="textInput" v-model="tempText" class="text-input"
-                :style="{ left: textInputX + 'px', top: textInputY + 'px' }" @keyup.enter="addTextAnnotation"
-                @blur="cancelTextInput" placeholder="输入文字，按回车确认">
+            <textarea v-if="showTextInput" ref="textInput" v-model="tempText" class="text-input"
+                :style="{ left: textInputX + 'px', top: textInputY + 'px' }" @keydown="handleKeyDown"
+                @blur="cancelTextInput" placeholder="输入文字，按回车确认，Shift+回车换行"></textarea>
         </div>
 
 
@@ -252,9 +252,7 @@ export default {
                 } else if (annotation.type === 'arrow') {
                     this.drawArrow(ctx, annotation.startX, annotation.startY, annotation.endX, annotation.endY);
                 } else if (annotation.type === 'text') {
-                    ctx.font = '16px Arial';
-                    ctx.fillStyle = annotation.color || '#ff0000';
-                    ctx.fillText(annotation.text, annotation.x, annotation.y);
+                    this.drawMultilineText(ctx, annotation.text, annotation.x, annotation.y, annotation.color || '#ff0000');
                 }
             });
         },
@@ -301,9 +299,7 @@ export default {
                             annotation.endY * scaleY
                         );
                     } else if (annotation.type === 'text') {
-                        ctx.font = `${16 * scaleX}px Arial`;
-                        ctx.fillStyle = annotation.color || '#ff0000';
-                        ctx.fillText(annotation.text, annotation.x * scaleX, annotation.y * scaleY);
+                        this.drawMultilineText(ctx, annotation.text, annotation.x * scaleX, annotation.y * scaleY, annotation.color || '#ff0000');
                     }
                 });
 
@@ -323,6 +319,20 @@ export default {
                     console.log('已添加带标注的截图到上传列表');
                 }, 'image/png');
             };
+        },
+        // 绘制多行文本
+        drawMultilineText(ctx, text, x, y, color) {
+            ctx.font = '16px Arial';
+            ctx.fillStyle = color;
+
+            // 分割文本为多行
+            const lines = text.split('\n');
+            const lineHeight = 20; // 行高
+
+            // 逐行绘制文本
+            lines.forEach((line, index) => {
+                ctx.fillText(line, x, y + (index * lineHeight));
+            });
         },
         // 绘制箭头
         drawArrow(ctx, fromX, fromY, toX, toY) {
@@ -367,6 +377,30 @@ export default {
                     this.$refs.textInput.focus();
                 }
             });
+        },
+        // 处理键盘事件
+        handleKeyDown(event) {
+            // 如果按下Enter键
+            if (event.key === 'Enter') {
+                console.log("### 按下", event);
+                // 如果同时按下了Shift键或Ctrl键，则手动添加换行
+                if (event.shiftKey || event.ctrlKey) {
+                    // 阻止默认行为，手动添加换行
+                    event.preventDefault();
+                    // 在光标位置插入换行符
+                    const start = this.tempText.substring(0, event.target.selectionStart);
+                    const end = this.tempText.substring(event.target.selectionEnd);
+                    this.tempText = start + '\n' + end;
+                    // 在下一个DOM更新周期中恢复光标位置
+                    this.$nextTick(() => {
+                        event.target.selectionStart = event.target.selectionEnd = start.length + 1;
+                    });
+                    return;
+                }
+                // 如果只是按下Enter键，则确认添加标注
+                event.preventDefault(); // 阻止默认行为，避免换行
+                this.addTextAnnotation();
+            }
         },
         // 添加文字标注
         addTextAnnotation() {
@@ -438,6 +472,9 @@ export default {
     outline: none;
     z-index: 10;
     min-width: 120px;
+    min-height: 30px;
+    resize: none;
+    line-height: 1.4;
 }
 
 /* 自定义上传组件图片预览框大小 */
