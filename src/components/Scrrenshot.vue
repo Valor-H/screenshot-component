@@ -12,6 +12,11 @@
             <el-slider v-model="lineWidth" :min="1" :max="10" :step="1" style="width: 100px;"></el-slider>
             <span>{{lineWidth}}px</span>
         </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span>字号:</span>
+            <el-slider v-model="fontSize" :min="12" :max="36" :step="2" style="width: 100px;"></el-slider>
+            <span>{{fontSize}}px</span>
+        </div>
 
         <el-button style="margin:24px 0;" @click="addAnnotatedScreenshot"
             :disabled="!isShowSreenshot">添加标注图到上传列表</el-button>
@@ -55,6 +60,7 @@ export default {
             annotationType: 'rect',
             annotationColor: '#ff0000',
             lineWidth: 2,
+            fontSize: 16,
             // 矩形标注相关
             isDrawing: false,
             startX: 0,
@@ -261,7 +267,7 @@ export default {
                 } else if (annotation.type === 'arrow') {
                     this.drawArrow(ctx, annotation.startX, annotation.startY, annotation.endX, annotation.endY);
                 } else if (annotation.type === 'text') {
-                    this.drawMultilineText(ctx, annotation.text, annotation.x, annotation.y, annotation.color || this.annotationColor);
+                    this.drawMultilineText(ctx, annotation.text, annotation.x, annotation.y, annotation.color || this.annotationColor, 1, annotation.fontSize || this.fontSize);
                 }
             });
         },
@@ -309,7 +315,7 @@ export default {
                             scaleX // 传入缩放比例，使箭头大小按比例调整
                         );
                     } else if (annotation.type === 'text') {
-                        this.drawMultilineText(ctx, annotation.text, annotation.x * scaleX, annotation.y * scaleY, annotation.color || this.annotationColor, scaleX);
+                        this.drawMultilineText(ctx, annotation.text, annotation.x * scaleX, annotation.y * scaleY, annotation.color || this.annotationColor, scaleX, annotation.fontSize || this.fontSize);
                     }
                 });
 
@@ -331,13 +337,13 @@ export default {
             };
         },
         // 绘制多行文本
-        drawMultilineText(ctx, text, x, y, color, scale = 1) {
-            ctx.font = `${16 * scale}px Arial`; // 字体大小根据比例缩放
+        drawMultilineText(ctx, text, x, y, color, scale = 1, fontSize = this.fontSize) {
+            ctx.font = `${fontSize * scale}px Arial`; // 字体大小根据比例缩放
             ctx.fillStyle = color;
 
             // 分割文本为多行
             const lines = text.split('\n');
-            const lineHeight = 20 * scale; // 行高也按比例缩放
+            const lineHeight = (fontSize + 4) * scale; // 行高也按比例缩放，保持为字体大小+4px
 
             // 逐行绘制文本
             lines.forEach((line, index) => {
@@ -435,7 +441,8 @@ export default {
                 text: this.tempText,
                 x: this.textInputX,
                 y: this.textInputY,
-                color: this.annotationColor
+                color: this.annotationColor,
+                fontSize: this.fontSize // 保存当前的字体大小
             });
 
             // 重绘所有标注
