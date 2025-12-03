@@ -7,6 +7,11 @@
         </el-radio-group>
 
         <el-color-picker v-model="annotationColor" />
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span>粗细:</span>
+            <el-slider v-model="lineWidth" :min="1" :max="10" :step="1" style="width: 100px;"></el-slider>
+            <span>{{lineWidth}}px</span>
+        </div>
 
         <el-button style="margin:24px 0;" @click="addAnnotatedScreenshot"
             :disabled="!isShowSreenshot">添加标注图到上传列表</el-button>
@@ -49,6 +54,7 @@ export default {
             originImage: null,
             annotationType: 'rect',
             annotationColor: '#ff0000',
+            lineWidth: 2,
             // 矩形标注相关
             isDrawing: false,
             startX: 0,
@@ -177,7 +183,7 @@ export default {
 
             const ctx = canvas.getContext('2d');
             ctx.strokeStyle = this.annotationColor;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = this.lineWidth;
 
             if (this.annotationType === 'rect') {
                 // 绘制当前矩形
@@ -212,7 +218,7 @@ export default {
                         width: endX - this.startX,
                         height: endY - this.startY,
                         color: this.annotationColor,
-                        lineWidth: 2
+                        lineWidth: this.lineWidth
                     });
                 } else if (this.annotationType === 'arrow') {
                     this.annotations.push({
@@ -222,7 +228,7 @@ export default {
                         endX: endX,
                         endY: endY,
                         color: this.annotationColor,
-                        lineWidth: 2
+                        lineWidth: this.lineWidth
                     });
                 }
 
@@ -349,13 +355,24 @@ export default {
             ctx.lineTo(toX, toY);
             ctx.stroke();
 
-            // 绘制箭头
+            // 绘制三角形箭头
             ctx.beginPath();
             ctx.moveTo(toX, toY);
-            ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
-            ctx.moveTo(toX, toY);
-            ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+            // 计算三角形箭头的两个顶点
+            const point1X = toX - headLength * Math.cos(angle - Math.PI / 6);
+            const point1Y = toY - headLength * Math.sin(angle - Math.PI / 6);
+            const point2X = toX - headLength * Math.cos(angle + Math.PI / 6);
+            const point2Y = toY - headLength * Math.sin(angle + Math.PI / 6);
+            
+            // 绘制三角形箭头
+            ctx.moveTo(point1X, point1Y);
+            ctx.lineTo(toX, toY);
+            ctx.lineTo(point2X, point2Y);
+            ctx.closePath(); // 闭合三角形
             ctx.stroke();
+            // 可选：填充三角形内部，使箭头更明显
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.fill();
         },
         // 处理图片区域点击
         handlePreviewClick(event) {
