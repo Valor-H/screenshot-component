@@ -6,6 +6,8 @@
             <el-radio-button label="text" value="text">文字</el-radio-button>
         </el-radio-group>
 
+        <el-color-picker v-model="annotationColor" />
+
         <el-button style="margin:24px 0;" @click="addAnnotatedScreenshot"
             :disabled="!isShowSreenshot">添加标注图到上传列表</el-button>
 
@@ -46,6 +48,7 @@ export default {
             stream: null,
             originImage: null,
             annotationType: 'rect',
+            annotationColor: '#ff0000',
             // 矩形标注相关
             isDrawing: false,
             startX: 0,
@@ -173,7 +176,7 @@ export default {
             this.redrawAnnotations();
 
             const ctx = canvas.getContext('2d');
-            ctx.strokeStyle = '#ff0000';
+            ctx.strokeStyle = this.annotationColor;
             ctx.lineWidth = 2;
 
             if (this.annotationType === 'rect') {
@@ -208,7 +211,7 @@ export default {
                         startY: this.startY,
                         width: endX - this.startX,
                         height: endY - this.startY,
-                        color: '#ff0000',
+                        color: this.annotationColor,
                         lineWidth: 2
                     });
                 } else if (this.annotationType === 'arrow') {
@@ -218,7 +221,7 @@ export default {
                         startY: this.startY,
                         endX: endX,
                         endY: endY,
-                        color: '#ff0000',
+                        color: this.annotationColor,
                         lineWidth: 2
                     });
                 }
@@ -252,7 +255,7 @@ export default {
                 } else if (annotation.type === 'arrow') {
                     this.drawArrow(ctx, annotation.startX, annotation.startY, annotation.endX, annotation.endY);
                 } else if (annotation.type === 'text') {
-                    this.drawMultilineText(ctx, annotation.text, annotation.x, annotation.y, annotation.color || '#ff0000');
+                    this.drawMultilineText(ctx, annotation.text, annotation.x, annotation.y, annotation.color || this.annotationColor);
                 }
             });
         },
@@ -299,7 +302,7 @@ export default {
                             annotation.endY * scaleY
                         );
                     } else if (annotation.type === 'text') {
-                        this.drawMultilineText(ctx, annotation.text, annotation.x * scaleX, annotation.y * scaleY, annotation.color || '#ff0000');
+                        this.drawMultilineText(ctx, annotation.text, annotation.x * scaleX, annotation.y * scaleY, annotation.color || this.annotationColor);
                     }
                 });
 
@@ -382,7 +385,6 @@ export default {
         handleKeyDown(event) {
             // 如果按下Enter键
             if (event.key === 'Enter') {
-                console.log("### 按下", event);
                 // 如果同时按下了Shift键或Ctrl键，则手动添加换行
                 if (event.shiftKey || event.ctrlKey) {
                     // 阻止默认行为，手动添加换行
@@ -415,7 +417,7 @@ export default {
                 text: this.tempText,
                 x: this.textInputX,
                 y: this.textInputY,
-                color: '#ff0000'
+                color: this.annotationColor
             });
 
             // 重绘所有标注
